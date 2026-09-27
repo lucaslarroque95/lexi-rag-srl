@@ -1,0 +1,14 @@
+ebooklib
+bs4
+langchain_core
+langchain_text_splitters
+langchain_openai
+sqlmodel
+SQLAlchemy
+psycopg[binary]
+pgvector
+python-dotenv
+pika
+boto3
+pytest
+ruff

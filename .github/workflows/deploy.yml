@@ -1,0 +1,56 @@
+# Deploys lexi-rag-srl on every push to main: builds the single zip (deps +
+# the adapters/config/db/models/ports/repositories/use_cases packages +
+# bootstrap.py + the handler) and applies ONLY this repo's infra/ — the
+# function, its code, and its SQS event source mapping. Never touches
+# lexi-infra-aws (RDS, VPC, IAM, the queue itself, the other three
+# services): that stays a manual `terraform apply`, reviewed by hand.
+#
+# Needs, once this repo exists for real:
+#   - lexi-infra-aws applied at least once (its outputs are what this reads)
+#   - lexi-infra-aws/variables.tf's github_repo_rag set to this repo, applied
+#   - AWS_DEPLOY_ROLE_ARN set as a repository variable (the
+#     github_actions_deploy_role_arns.rag output from lexi-infra-aws)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout lexi-rag-srl
+        uses: actions/checkout@v4
+        with:
+          path: cloud-native/lexi-rag-srl
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build
+        env:
+          PYTHON_BIN: python3
+        run: ./build.sh
+        working-directory: cloud-native/lexi-rag-srl
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.0"
+
+      - name: Terraform apply (this service's function + event source mapping only)
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
+        working-directory: cloud-native/lexi-rag-srl/infra
