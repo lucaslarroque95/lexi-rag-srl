@@ -10,5 +10,3 @@ pgvector
 python-dotenv
 pika
 boto3
-pytest
-ruff

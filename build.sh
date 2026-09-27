@@ -17,6 +17,13 @@ echo "installing dependencies"
 "$PYTHON_BIN" -m pip install --quiet --no-cache-dir \
   -r requirements.txt -t "$DIST/build"
 
+# Direct zip upload caps out around 50MB, so drop what the function never
+# needs: boto3/botocore/s3transfer already ship with the Lambda Python
+# runtime, and bin/ is just console-script entry points.
+echo "pruning runtime-provided packages"
+rm -rf "$DIST"/build/{boto3,botocore,s3transfer,bin}
+rm -rf "$DIST"/build/{boto3,botocore,s3transfer}-*.dist-info
+
 echo "copying shared packages"
 cp -r ./{adapters,config.py,db,models,ports,repositories,use_cases} "$DIST/build/"
 cp bootstrap.py "$DIST/build/"
